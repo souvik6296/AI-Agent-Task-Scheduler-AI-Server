@@ -27,6 +27,8 @@ const genAI = new GoogleGenerativeAI("AIzaSyA0VqekXD-lAK2cB3nwIPAoDSUFeUXQv8M");
 
 
 
+
+
 const dbFunctions = {
     tableExists: tableExists,
     createTable: createTable,
