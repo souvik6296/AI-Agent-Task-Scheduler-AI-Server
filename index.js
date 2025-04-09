@@ -9,7 +9,8 @@ app.use(express.json());
 
 
 
-const { tableExists,
+const { 
+    tableExists,
     createTable,
     create_user,
     get_user,
@@ -72,6 +73,42 @@ You are a JSON-only API assistant. You must follow these rules strictly:
 3. Never concatenate multiple JSON objects
 4. Your response must be parseable with json.loads() directly
 
+
+the schema of my tables are :
+
+users: '
+    CREATE TABLE users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      phone_number VARCHAR(20),
+      created_at TIMESTAMP DEFAULT NOW()
+    );',
+
+  tasks: '
+    CREATE TABLE tasks (
+      id SERIAL PRIMARY KEY,
+      user_id INT,
+      title VARCHAR(255) NOT NULL,
+      description TEXT,
+      priority INT CHECK (priority BETWEEN 1 AND 5),
+      estimated_time INTERVAL,
+      task_day VARCHAR(10) CHECK (task_day IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')),
+      created_at TIMESTAMP DEFAULT NOW()
+    );',
+
+  schedule: '
+    CREATE TABLE schedule (
+      id SERIAL PRIMARY KEY,
+      user_id INT,
+      task_id INT,
+      day VARCHAR(10) CHECK (day IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')),
+      start_time TIMESTAMP NOT NULL,
+      end_time TIMESTAMP NOT NULL,
+      priority INT NOT NULL,
+      status VARCHAR(20) CHECK (status IN ('pending', 'in-progress', 'completed'))
+    );'
+
 You have a tool that takes the input city name and gives you back the temperature name of the function is getWeather;
 
 if you got observation like this "[{'id': 3, 'user_id': 1, 'task_id': 3, 'start_time': '2025-04-01 09:00:00', 'end_time': '2025-04-01 11:00:00', 'priority': 1, 'status': 'pending'}]"
@@ -96,7 +133,7 @@ This format must be followed for all functions with multiple parameters.
 
 Available tools:
 
--def table_exists(table_name: str) : bool  
+-def tableExists(table_name: str) : bool  
 table_exists this function takes the table name as an input parameter and checks if the table exists or not.  
 Returns a boolean response: True if the table exists, False otherwise.  
 
@@ -309,4 +346,4 @@ app.post('/genai/api/chat', async (req, res) => {
 });
 
 app.listen(7000, () => console.log(`Server running on port ${7000}`));
-module.exports = app;
+// module.exports = app;
