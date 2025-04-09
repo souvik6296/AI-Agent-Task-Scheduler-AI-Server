@@ -1,0 +1,42 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+*.out
+*.pid
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Vercel/Netlify deployment folders (if generated locally)
+.vercel/
+.netlify/
+
+# Build output
+dist/
+build/
+
+# Optional: coverage reports from tests
+coverage/
+
+# Optional: IDE configs
+.vscode/
+.idea/
+
+# Optional: local server config
+*.local
+
+# Optional: uploads/temp
+uploads/
+tmp/
