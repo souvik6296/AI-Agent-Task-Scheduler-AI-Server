@@ -24,7 +24,7 @@ const {
     update_schedule_status,
     get_user_schedule } = require("./database.js")
 
-const genAI = new GoogleGenerativeAI("AIzaSyA-8PBfpDRC1GC5C5ABO2aNcojVg7FbVLE");
+const genAI = new GoogleGenerativeAI("AIzaSyA0VqekXD-lAK2cB3nwIPAoDSUFeUXQv8M");
 
 
 
@@ -46,8 +46,18 @@ const dbFunctions = {
     get_user_schedule: get_user_schedule
 };
 
+const getResponse = async (mquery) => {
 
-const System_prompt =  `
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const chat = model.startChat({
+        history: [
+            {
+                role: "user",
+                parts: [
+                    {
+                        text: `
 You are an AI assistant with Start, Plan, Action, Observation and output state.
 Wait for the user prompt and first plan using available tools.
 After planning call the appropiate function or tool based on avaibility and wait for the response.
@@ -283,141 +293,57 @@ Example:
 
 
 
-            `;
-
-const activeConnections = new Map();
-
-const getResponse = async (mquery, clientId) => {
-    try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-        const chat = model.startChat({
-            history: [
-                {
-                    role: "user",
-                    parts: [
-                        {
-                            text: System_prompt.trim()
-                        }
-                    ]
-                }
-            ]
-        });
-
-        let query = `{"type": "user", "user":${JSON.stringify(mquery)}}`;
-        const res = activeConnections.get(clientId);
-
-        if (!res) {
-            console.log('Client connection not found');
-            return;
-        }
-
-        const sendEvent = (type, data) => {
-            res.write(`data: ${JSON.stringify({type, data})}\n\n`);
-        };
-
-        while (true) {
-            const result = await chat.sendMessage(query);
-            const response = result.response;
-            const text = response.text().replaceAll("```", "").replace("json", "");
-            console.log(text);
-            
-            try {
-                const jsondata = JSON.parse(text);
-                
-                if (jsondata.type == "action") {
-                    const obs = await dbFunctions[jsondata.function](jsondata.input);
-                    console.log(JSON.stringify(obs));
-                    query = `{"type": "observation", "observation": ${JSON.stringify(obs)}}`;
-                    continue;
-                }
-                else if (jsondata.type == "output") {
-                    console.log(`AI Response: ${jsondata.output}`);
-                    sendEvent("output", jsondata.output);
-                    return;
-                }
-                else if (jsondata.type == "plan") {
-                    sendEvent("plan", jsondata.plan);
-                    query = JSON.stringify(jsondata);
-                }
-                else {
-                    query = JSON.stringify(jsondata);
-                }
-            } catch (error) {
-                console.error('Error parsing AI response:', error);
-                sendEvent("error", "Failed to parse AI response");
-                return;
+            `.trim()
+                    }
+                ]
             }
+        ]
+    });
+
+    let query = `{"type": "user", "user":${mquery}}`
+
+    while (true) {
+        const result = await chat.sendMessage(query);
+        const response = result.response;
+        const text = response.text().replaceAll("```", "").replace("json", "");
+        console.log(text);
+        const jsondata = JSON.parse(text);
+        if (jsondata.type == "action") {
+            const obs = await dbFunctions[jsondata.function](jsondata.input)
+            console.log(JSON.stringify(obs));
+            query = `{"type": "observation", "observation": ${JSON.stringify(obs)}}`;
+            continue;
         }
-    } catch (error) {
-        console.error('Error in getResponse:', error);
-        const res = activeConnections.get(clientId);
-        if (res) {
-            res.write(`data: ${JSON.stringify({
-                type: "error",
-                data: error.message
-            })}\n\n`);
+        else if (jsondata.type == "output") {
+            console.log(`AI Response:  ${jsondata.output}`);
+            return jsondata.output;
         }
-    } finally {
-        const res = activeConnections.get(clientId);
-        if (res) {
-            res.end();
-            activeConnections.delete(clientId);
+        else {
+            query = JSON.stringify(jsondata);
         }
     }
-};
+
+}
+
 
 // API endpoints
 app.post('/genai/api/chat', async (req, res) => {
     try {
-        // Check if this is an SSE connection
-        if (req.headers.accept === 'text/event-stream') {
-            const clientId = req.query.clientId;
-            
-            if (!clientId) {
-                return res.status(400).json({
-                    ok: false,
-                    error: "Missing clientId parameter"
-                });
-            }
-
-            res.setHeader('Content-Type', 'text/event-stream');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('Connection', 'keep-alive');
-            
-            // Store the response object
-            activeConnections.set(clientId, res);
-            
-            // Handle client disconnect
-            req.on('close', () => {
-                activeConnections.delete(clientId);
-                console.log(`Client ${clientId} disconnected`);
-            });
-            
-            return;
-        }
-
-        // Handle regular POST request
-        const { usermsg } = req.body;
-        const clientId = Date.now().toString();
-        
-        // Start processing in the background
-        getResponse(usermsg, clientId);
-        
-        // Return the client ID immediately
-        res.json({
-            ok: true,
-            clientId
-        });
-        
+        // console.log(req);
+        const response = await getResponse(req.body.usermsg);
+        res.send({
+            response: response,
+            ok: true
+        }).status(200);
     } catch (error) {
-        console.error('Error in chat endpoint:', error);
+        console.error('Error fetching tasks:', error);
         res.status(500).json({
+            response: 'Failed to fetch tasks',
             ok: false,
-            error: error.message
+            errormsg: error
         });
     }
 });
 
-app.listen(7000, () => console.log(`Server running on port ${7000}`));
-// module.exports = app;
+// app.listen(7000, () => console.log(`Server running on port ${7000}`));
+module.exports = app;
