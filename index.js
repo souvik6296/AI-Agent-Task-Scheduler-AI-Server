@@ -24,7 +24,7 @@ const {
     update_schedule_status,
     get_user_schedule } = require("./database.js")
 
-const genAI = new GoogleGenerativeAI("AIzaSyA0VqekXD-lAK2cB3nwIPAoDSUFeUXQv8M");
+const genAI = new GoogleGenerativeAI("AIzaSyA-8PBfpDRC1GC5C5ABO2aNcojVg7FbVLE");
 
 
 
